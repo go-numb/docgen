@@ -7,6 +7,9 @@ use std::path::Path;
 
 use serde_json::json;
 
+mod suppot;
+use suppot::docx;
+
 mod req;
 use crate::req::gemini::{get_content, request};
 
@@ -28,7 +31,24 @@ fn scan_for_files(dir: &Path) -> Vec<String> {
                     println!("Found file: {}", path.display());
                     // ドキュメントかどうか判定し、処理対象にするか決める
                     // read file to string
-                    let content = fs::read_to_string(path).expect("Failed to read file");
+                    let content = {
+                        match path.extension() {
+                            Some(ext) if ext == "docx" => match docx::read(path) {
+                                Ok(content) => content,
+                                Err(err) => {
+                                    eprintln!("Error: {}", err);
+                                    continue;
+                                }
+                            },
+                            _ => match fs::read_to_string(path) {
+                                Ok(content) => content,
+                                Err(err) => {
+                                    eprintln!("Error: {}", err);
+                                    continue;
+                                }
+                            },
+                        }
+                    };
                     let filepath = path.to_str().unwrap();
                     str.push(format!(
                         "{}\n
@@ -103,6 +123,8 @@ fn is_document_or_source_code(file_path: &Path) -> bool {
             | Some("env.prod")
             | Some("env.stage")
             | Some("env.stg")
+            // [support]ドキュメント
+            | Some("docx")
     )
 }
 
@@ -218,7 +240,9 @@ async fn main() {
             // ファイルに保存
             let time_at = chrono::Local::now();
             let docname = format!("doc-{}.md", time_at.format("%Y%m%d"));
-            let path = Path::new(&docname);
+            // ターゲットディレクトリ下にファイルを作成
+            let target_dir_and_filename = format!("{}/{}", dir.display(), docname);
+            let path = Path::new(&target_dir_and_filename);
             let mut file = fs::File::create(path).expect("Failed to create file");
             file.write_all(content.as_bytes())
                 .expect("Failed to write to file");

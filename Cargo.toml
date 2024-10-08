@@ -17,3 +17,6 @@ clap = { version = "4.5.19", features = ["derive"] }
 serde_json = "1.0.128"
 serde = "1.0.210"
 chrono = "0.4.38"
+
+zip = "0.5"        # use office file for docx
+quick-xml = "0.22" # use office file for docx
