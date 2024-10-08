@@ -1,0 +1,96 @@
+name: Release on push to release branch
+
+on:
+  push:
+    branches:
+      - release  # この設定により、releaseブランチにpushされた場合にアクションがトリガーされます
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        platform: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.platform }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable  # Rustの安定版をインストール
+
+      - name: Install dependencies (Linux only)
+        if: matrix.platform == 'ubuntu-latest'
+        run: sudo apt-get install -y pkg-config libssl-dev
+
+      - name: Build the project
+        run: cargo build --release
+
+      - name: Create release directory
+        run: mkdir -p release
+
+      - name: Copy the built binary to release directory (Linux)
+        if: matrix.platform == 'ubuntu-latest'
+        run: cp target/release/docgen ./release/docgen-linux
+
+      - name: Copy the built binary to release directory (macOS)
+        if: matrix.platform == 'macos-latest'
+        run: cp target/release/docgen ./release/docgen-macos
+
+      - name: Copy the built binary to release directory (Windows)
+        if: matrix.platform == 'windows-latest'
+        run: cp target/release/docgen.exe ./release/docgen-windows.exe
+
+      - name: Upload the binary as artifact (optional, for debugging)
+        uses: actions/upload-artifact@v3
+        with:
+          name: docgen-binary-${{ matrix.platform }}
+          path: ./release/
+
+      - name: Create a release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # GitHub Tokenを利用して認証
+        with:
+          tag_name: ${{ github.sha }}  # コミットのSHAをタグ名として使う。適宜変更しても良いです。
+          release_name: "Release ${{ github.sha }}"
+          body: |
+            Automated release for commit: ${{ github.sha }} on platform ${{ matrix.platform }}
+          draft: false  # trueにするとドラフト状態のリリースになります
+          prerelease: false  # プレリリースにしたい場合はtrueに
+
+      - name: Upload release assets (Linux)
+        if: matrix.platform == 'ubuntu-latest'
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./release/docgen-linux
+          asset_name: docgen-linux
+          asset_content_type: application/octet-stream
+
+      - name: Upload release assets (macOS)
+        if: matrix.platform == 'macos-latest'
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./release/docgen-macos
+          asset_name: docgen-macos
+          asset_content_type: application/octet-stream
+
+      - name: Upload release assets (Windows)
+        if: matrix.platform == 'windows-latest'
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./release/docgen-windows.exe
+          asset_name: docgen-windows.exe
+          asset_content_type: application/octet-stream

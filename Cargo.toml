@@ -1,0 +1,19 @@
+[package]
+name = "docgen"
+version = "0.1.0"
+edition = "2021"
+description = "このリポジトリは、指定されたディレクトリ内 のファイル群を分析し、その内容に基づいてドキュメントを生成するツールです。 this name comes from the [document generator]."
+authors = ["_numbP"]
+licence = "MIT OR Apache-2.0"
+repository = "https://github.com/go-numb/TalkWithRustGPT"
+
+
+[dependencies]
+walkdir = "2"                                        # 再帰的なディレクトリ走査
+ignore = "0.4"                                       # .gitignore に従って無視すべきファイルを指定可能
+reqwest = { version = "0.11", features = ["json"] }  # ChatGPT APIのHTTPリクエスト用
+tokio = { version = "1", features = ["full"] }       # 非同期処理
+clap = { version = "4.5.19", features = ["derive"] }
+serde_json = "1.0.128"
+serde = "1.0.210"
+chrono = "0.4.38"
